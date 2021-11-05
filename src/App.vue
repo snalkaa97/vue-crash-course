@@ -1,7 +1,13 @@
 <template>
 	<div class="container">
-		<Header title="Task Tracker" />
-		<AddTask @add-task="addTask" />
+		<Header
+			@toggle-add-task="toggleAddTask"
+			title="Task Tracker"
+			:showAddTask="showAddTask"
+		/>
+		<div v-show="showAddTask">
+			<AddTask @add-task="addTask" />
+		</div>
 		<Tasks
 			@toggle-reminder="toggleReminder"
 			@delete-task="deleteTask"
@@ -11,6 +17,7 @@
 </template>
 
 <script>
+import axios from "axios";
 import Header from "./components/Header.vue";
 import Tasks from "./components/Tasks.vue";
 import AddTask from "./components/AddTask.vue";
@@ -24,44 +31,68 @@ export default {
 	data() {
 		return {
 			tasks: [],
+			showAddTask: false,
 		};
 	},
 	methods: {
+		toggleAddTask() {
+			this.showAddTask = !this.showAddTask;
+		},
 		addTask(task) {
-			this.tasks = [...this.tasks, task];
+			axios.post(`api/tasks`, task).then((response) => {
+				console.log(response);
+				this.tasks = [...this.tasks, response.data];
+			});
 		},
 		deleteTask(id) {
 			if (confirm("Are you sure?")) {
-				this.tasks = this.tasks.filter((task) => task.id !== id);
+				// this.tasks = this.tasks.filter((task) => task.id !== id);
+				axios.delete(`api/tasks/${id}`).then(() => {
+					const taskId = this.tasks.indexOf(id);
+					this.tasks.splice(taskId, 1);
+				});
 			}
 		},
 		toggleReminder(id) {
-			this.tasks = this.tasks.map((task) =>
-				task.id === id ? { ...task, reminder: !task.reminder } : task
+			this.tasks.map((task) =>
+				task.id === id
+					? axios
+							.put(`api/tasks/${id}`, { ...task, reminder: !task.reminder })
+							.then((response) => {
+								this.tasks = this.tasks.map((task_update) =>
+									task_update.id === id
+										? { ...task, reminder: !task.reminder }
+										: task_update
+								);
+							})
+					: task
 			);
 		},
 	},
 	created() {
-		this.tasks = [
-			{
-				id: 1,
-				text: "Task 1",
-				day: "March 1",
-				reminder: true,
-			},
-			{
-				id: 2,
-				text: "Task 2",
-				day: "March 2",
-				reminder: false,
-			},
-			{
-				id: 3,
-				text: "Task 3",
-				day: "March 3",
-				reminder: true,
-			},
-		];
+		// this.tasks = [
+		// 	{
+		// 		id: 1,
+		// 		text: "Task 1",
+		// 		day: "March 1",
+		// 		reminder: true,
+		// 	},
+		// 	{
+		// 		id: 2,
+		// 		text: "Task 2",
+		// 		day: "March 2",
+		// 		reminder: false,
+		// 	},
+		// 	{
+		// 		id: 3,
+		// 		text: "Task 3",
+		// 		day: "March 3",
+		// 		reminder: true,
+		// 	},
+		// ];
+		axios.get(`api/tasks`).then((response) => {
+			this.tasks = response.data;
+		});
 	},
 };
 </script>
